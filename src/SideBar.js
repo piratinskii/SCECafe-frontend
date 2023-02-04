@@ -6,7 +6,8 @@ import {BsCartCheck} from "react-icons/bs";
 import {BiExit, BiFoodMenu} from "react-icons/bi";
 import {CiSettings} from "react-icons/ci";
 
-fetch('http://localhost:8080/users/getusername/' + localStorage.getItem("userID"))
+fetch('http://localhost:8080/users/getusername/' + localStorage.getItem("userID"), {headers: {
+        Authorization: localStorage.getItem("token")}})
     .then(response => response.text())
     .then(function (text){
         localStorage.setItem("username", text)
@@ -29,43 +30,43 @@ const itemsSettings = () => {
 
 function Sidebar(props) {
     const logout = () => {
-        localStorage.setItem('isLoggedIn', 'false');
-        props.setIsLoggedIn(false);
+        localStorage.setItem('token', null);
+        window.location.assign('http://localhost:3000/')
     }
 
     const role = localStorage.getItem('role')
-    console.log(role)
     let helloWords = Array ('Nice to see you, ','Have a good day, ','You relly need coffee, ','WOW! It`s you , ')
     return (
         <ChakraProvider>
             <Tag borderRadius='25px' marginLeft='-30px' colorScheme='blue' onClick={() => {
-                toProfile()
+                if (role === 'USER' || role === 'ADMIN')
+                    toProfile()
             }}>
             <Heading as='h2' size='md' margin='10px'>
                 {helloWords[Math.floor(Math.random()*helloWords.length)]}{localStorage.getItem("username")}!
             </Heading>
             </Tag>
             <Stack direction='column' spacing={2} align='center' m="20px" marginLeft="-10px">
-                {role === 'user' ? <div>
+                {role === 'USER' || role === 'GUEST' || role === 'BARISTA' ? <div>
                 <Button colorScheme='blue' variant='outline' w="200px" onClick={() => {
                     toMenu()
                 }}>
                     <Icon as={BiFoodMenu}/>&nbsp;Menu
                 </Button>
-                <Button colorScheme='blue' variant='outline' w="200px" onClick={() => {
+                <Button marginTop={2} colorScheme='blue' variant='outline' w="200px" onClick={() => {
                     toOrder()
                 }}>
                     <Icon as={BsCartCheck}/>&nbsp;Cart
                 </Button>
 
              </div> :
-                role === 'admin' ? <div>
+                role === 'ADMIN' ? <div>
                     <Button marginTop={-3} colorScheme='blue' variant='outline' w="200px" onClick={() => {
                         itemsSettings()
                     }}>
                         <Icon as={CiSettings}/>&nbsp;Item`s settings
                     </Button>
-                </div> : role === 'barista' ? <div>
+                </div> : role === 'BARISTA' ? <div>
 
                 </div> : <Heading size={'lg'}>Houston, we have a problems</Heading>}
             <Button marginTop={-3} colorScheme='blue' variant='outline' w="200px" onClick={() => {

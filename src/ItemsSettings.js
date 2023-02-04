@@ -5,105 +5,62 @@ import {
     Stack,
     Image,
     Text,
-    SimpleGrid, useToast, Center, IconButton, Icon, Input, HStack, Box, CardHeader, VStack, Button
+    SimpleGrid, useToast, IconButton, Input, HStack, CardHeader, CardFooter
 } from '@chakra-ui/react'
 import { ChakraProvider } from '@chakra-ui/react'
-import {TiDelete, TiDeleteOutline} from "react-icons/ti";
-import {AiOutlineCloudUpload} from "react-icons/ai";
-import Dropzone, {useDropzone} from "react-dropzone";
+import {TiDeleteOutline} from "react-icons/ti";
+import {AddIcon} from "@chakra-ui/icons";
+
 
 function ItemsSettings(){
-    
-
-    const thumbsContainer = {
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 16
-    };
-
-    const thumb = {
-        display: 'inline-flex',
-        borderRadius: 2,
-        border: '1px solid #eaeaea',
-        marginBottom: 8,
-        marginRight: 8,
-        width: 100,
-        height: 100,
-        padding: 4,
-        boxSizing: 'border-box'
-    };
-
-    const thumbInner = {
-        display: 'flex',
-        minWidth: 0,
-        overflow: 'hidden'
-    };
-
-    const img = {
-        display: 'block',
-        width: 'auto',
-        height: '100%'
-    };
 
     const toast = useToast();
+
+    const [hover, setHover] = useState(false);
+    const addItemStyle =  {
+        background: hover ? '#f9f9ff' : '#ffffff'
+    }
     const [inOrder, setInOrder] = useState([]);
-    const [update, setUpdate] = useState(0);
+    const [update, setUpdate] = useState(false);
     useEffect(()=>{
-        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
+        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'),
+            {
+                headers: {
+                    Authorization: localStorage.getItem('token')
+                }
+            })
             .then(response => response.json())
             .then(setInOrder);
     }, []);
 
-    const handleClick = (id, title) => {
-        fetch('http://localhost:8080/position/add/' + localStorage.getItem('orderID') + '/' + id, {
+
+    const handleClickRemove = (id) => {
+        const formData = new FormData();
+        formData.set('id', id)
+        fetch('http://localhost:8080/item/remove', {
             method: 'POST',
-            body: ''
+            body: formData,
+            headers: {
+                Authorization: localStorage.getItem('token')
+            }
         })
-            .then(function (r){
-                toast({
-                    position: 'bottom-left',
-                    title: 'Item added.',
-                    description: title + ' is now in the cart',
-                    status: 'success',
-                    colorScheme: 'blue',
-                    duration: 1000,
-                    isClosable: true,
-                })
-                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
-                    .then(response => response.json())
-                    .then(setInOrder);
-            })
-    }
-    const handleClickRemove = (id, title) => {
-        fetch('http://localhost:8080/position/remove/' + localStorage.getItem('orderID') + '/' + id, {
-            method: 'POST',
-            body: ''
-        })
-            .then(function (r){
-                toast({
-                    position: 'bottom-left',
-                    title: 'Item removed.',
-                    description: title + ' removed from the cart',
-                    status: 'warning',
-                    colorScheme: 'blue',
-                    duration: 1000,
-                    isClosable: true,
-                })
-                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
-                    .then(response => response.json())
-                    .then(setInOrder);
-            })
+            .then(function () {window.location.reload()})
     }
 
     const [list, setList] = useState([]);
     useEffect(()=>{
-        fetch('http://localhost:8080/item')
+        fetch('http://localhost:8080/item', {
+            headers: {
+                Authorization: localStorage.getItem('token')
+            }
+        })
             .then(response => response.json())
             .then(setList);
     }, []);
 
-    fetch('http://localhost:8080/orders/get-current/'+localStorage.getItem('userID')).then(response => response.text()).then(function (text){
+    fetch('http://localhost:8080/orders/get-current/'+localStorage.getItem('userID'), {headers: {
+            Authorization: localStorage.getItem('token')
+        }}).then(response => response.text()).then(function (text){
         localStorage.setItem('orderID',text)
     })
 
@@ -125,9 +82,46 @@ function ItemsSettings(){
         Order.push(OrdPosition)
     })
 
+    function uploadFile(event, id) {
+        const imgFile = event.target.files[0];
+        console.log(id)
+        const formData = new FormData();
+        formData.set('File', imgFile);
+        formData.set('id', id)
+        console.log(event.target.files[0])
+        fetch('http://localhost:8080/item/images/upload', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                Authorization: localStorage.getItem('token')
+            }
+        }).then(data => console.log(data))
+            .catch(err => console.log(err))
+        setUpdate(!update)
+        window.location.reload();
+    }
+
+    function saveItem(id, title, desc, cost) {
+        const formData = new FormData();
+        if (title == null) title = '';
+        if (desc == null) desc = '';
+        if (cost == null) cost = '';
+        formData.set('id', id);
+        formData.set('title', title)
+        formData.set('desc', desc);
+        formData.set('cost', cost)
+        fetch('http://localhost:8080/item/edit', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                Authorization: localStorage.getItem('token')
+            }
+        }).then()
+        window.location.reload();
+    }
     return (
         <ChakraProvider>
-            <SimpleGrid minChildWidth='220px' spacing='40px' m='10px'>
+            <SimpleGrid minChildWidth='220px' minHeight='800px' spacing='40px' m='10px'>
                 {Order.map(({id, title, description, img, cost, count}, index) =>
                     <Card key={index}>
                         <CardHeader height={0}>
@@ -139,41 +133,44 @@ function ItemsSettings(){
                                 marginRight={-9}
                                 color={"red"}
                                 bgColor={"white"}
-                                onClick={() => {}}
+                                onClick={() => {handleClickRemove(id)}}
                             />
                         </CardHeader>
                         <CardBody >
+                            <label htmlFor={'uploadFileBtn'+id}>
                             <Image
-                                src={img}
+                                src={'http://localhost:8080/item/images/'+id}
                                 alt={title}
                                 borderRadius='lg'
                             />
+                            </label>
+                            <Input type='file' display='none' id={'uploadFileBtn'+id} onChange={(e) => {uploadFile(e, id)}} accept={'.jpg,.png'}/>
                             <Stack mt='6' spacing='3'>
-                                <Input fontWeight='bold' defaultValue={title}></Input>
-                                <Input type='text' defaultValue={description}/>
-                                <HStack><Input type='number' color='blue' fontSize='2xl' defaultValue={cost}/><Text color='blue' fontSize='2xl'> ₪</Text> </HStack>
-
+                                <Input fontWeight='bold' defaultValue={title} placeholder="New title" onBlur={(e) => {saveItem(id,e.target.value,description,cost)}}></Input>
+                                <Input type='text' defaultValue={description} placeholder="New description" onBlur={(e) => {saveItem(id,title,e.target.value,cost)}}/>
+                                <HStack><Input type='number' color='blue' fontSize='2xl' defaultValue={cost} onBlur={(e) => {saveItem(id,title,description,e.target.value)}}/><Text color='blue' fontSize='2xl'> ₪</Text> </HStack>
                             </Stack>
                         </CardBody>
+                        <CardFooter/>
                     </Card>)}
-                <Card>
-                    <CardHeader height={0}>
-
-                    </CardHeader>
-                    <CardBody >
-                        <VStack>
-                            <Box>
-                            {/*Here will be files upload*/}
-                            </Box>
-                        </VStack>
-                        <Stack mt='6' spacing='3' marginTop={5}>
-                            <Input fontWeight='bold' placeholder='Item title'></Input>
-                            <Input type='text' placeholder='Item description'/>
-                            <HStack><Input type='number' color='blue' fontSize='2xl' placeholder='Item cost'/><Text color='blue' fontSize='2xl'> ₪</Text> </HStack>
-                        </Stack>
-                    </CardBody>
-                </Card>
-                </SimpleGrid>
+                    <Card minHeight={500} onClick={() => {
+                        fetch('http://localhost:8080/item', {
+                            method: 'POST',
+                            headers: {
+                                Authorization: localStorage.getItem('token')
+                            }
+                        }).then()
+                        window.location.reload();
+                    }} style={addItemStyle} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+                        <CardHeader />
+                        <CardBody display={'flex'}
+                                  alignItems={'center'}
+                                  justifyContent={'center'}>
+                            <AddIcon color={'blue'} boxSize={'3em'}/>
+                        </CardBody>
+                        <CardFooter/>
+                    </Card>
+            </SimpleGrid>
             </ChakraProvider>
     );
 }

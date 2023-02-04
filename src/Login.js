@@ -11,7 +11,6 @@ import {
 } from "@chakra-ui/react";
 import {Field, Form, Formik} from "formik";
 import * as yup from 'yup';
-import md5 from "md5";
 const logo = 'logo.png';
 const validationSchema = yup.object().shape({
     login: yup.string().required('Login is required!'),
@@ -21,10 +20,17 @@ const validationSchema = yup.object().shape({
 
 
 function Login(props){
+    const [response, setResponse] = useState({})
     const toast = useToast();
     return (
         <ChakraProvider>
-            <Center>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '70vh',
+                }}>
                 <Box boxSize='20%' >
                     <Image
                         w='70%'
@@ -34,18 +40,71 @@ function Login(props){
                     />
                 <Formik initialValues={{ login: '', password: ''}} validationSchema={validationSchema}
                     onSubmit={(values, actions) => {
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             actions.setSubmitting(false)
-                            fetch('http://localhost:8080/users/'+values.login + '/' + md5(values.password))
-                                .then(response => response.text())
-                                .then(function (text){
-                                    if (Number(text) !== 0) {
-                                        localStorage.setItem('isLoggedIn', 'true');
-                                        localStorage.setItem('userID', text)
-                                        props.setIsLoggedIn(true)
-                                        fetch('http://localhost:8080/users/getrole?id='+localStorage.getItem('userID'))
-                                            .then(response => response.text()).then(function (text){localStorage.setItem('role', text)})
-                                    } else toast({title: 'Incorrect username or password', status: "warning", isClosable: true,})});
+                            console.log('Login: ' + values.login + ' Password' + values.password)
+                            fetch('http://localhost:8080/login',
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        username: values.login,
+                                        password: values.password
+                                    })
+                                })
+                                .then(function (response) {
+                                    return response.json()
+                                })
+                                .then(function (json) {
+                                    return [json['token'], json['userID'], json['role']]
+                                })
+                                .then(await async function (token) {
+                                    localStorage.setItem('token', "Bearer_" + token[0]);
+                                    localStorage.setItem('userID', token[1]);
+                                    localStorage.setItem('role', '' + token[2])
+                                    if (token[2] === 'BARISTA')
+                                        localStorage.setItem('baristaID', token[1]);
+                                    await fetch('http://localhost:8080/users/getusername/' + token[1], {
+                                        headers: {
+                                            Authorization: localStorage.getItem("token")
+                                        }
+                                    })
+                                        .then(response => response.text())
+                                        .then(async function (text) {
+                                            localStorage.setItem("username", text)
+                                            await fetch('http://localhost:8080/orders/get-current/' + localStorage.getItem('userID'), {
+                                                headers: {
+                                                    Authorization: localStorage.getItem("token")
+                                                }
+                                            }).then(response => response.text()).then(async function (text) {
+                                                await localStorage.setItem('orderID', text)
+                                            }).then(async function (text) {
+                                                await fetch('http://localhost:8080/orders/clear?id=' + text,
+                                                    {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            Authorization: localStorage.getItem('token')
+                                                        }
+                                                    }).then(r => {})
+                                            });
+                                        })
+                                })
+                                .then(function () {
+                                    window.location.assign('http://localhost:3000/')
+                                })
+                                .catch(function () {
+                                    toast({
+                                        position: 'bottom-left',
+                                        title: 'We have a problems.',
+                                        description: 'Login or password was incorrect =(',
+                                        status: 'error',
+                                        colorScheme: 'blue',
+                                        duration: 1000,
+                                        isClosable: true,
+                                    })
+                                })
                         }, 1000)
                     }}
                 >
@@ -72,6 +131,14 @@ function Login(props){
                             <Center>
                                 <Button
                                     mt={4}
+                                    type='back'
+                                    marginRight={12}
+                                    onClick={() => {window.location.assign('http://localhost:3000/welcome');}}
+                                >
+                                    Back
+                                </Button>
+                                <Button
+                                    mt={4}
                                     colorScheme='blue'
                                     isLoading={props.isSubmitting}
                                     type='login'
@@ -82,7 +149,7 @@ function Login(props){
                         </Form>
                     )}
                 </Formik></Box>
-            </Center>
+            </div>
         </ChakraProvider>
     );
 }

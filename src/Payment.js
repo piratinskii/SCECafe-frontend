@@ -25,30 +25,28 @@ import {
     Input,
     FormLabel,
     FormControl,
-    PinInput,
-    PinInputField,
     FormHelperText,
     FormErrorMessage,
     Divider,
-    useToast
+    useToast, Box
 } from '@chakra-ui/react'
 import { ChakraProvider } from '@chakra-ui/react'
 import InputMask from "react-input-mask";
-import ReactInputDateMask from "react-input-date-mask"
-import * as yup from "yup";
 
 
 function Payment(){
     const toast = useToast();
     const [list, setList] = useState([]);
     useEffect(()=>{
-        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
+        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {headers: {
+                Authorization: localStorage.getItem("token")}})
             .then(response => response.json())
             .then(setList);
     }, []);
 
     const { isOpen, onOpen, onClose } = useDisclosure()
-
+    const { isOpen: isOpenCash, onOpen: onOpenCash, onClose: onCloseCash } = useDisclosure()
+    const { isOpen: isOpenFinal, onOpen: onOpenFinal, onClose: onCloseFinal } = useDisclosure()
     let total = 0
     list.forEach(element => {
         total += element.sum
@@ -58,19 +56,20 @@ function Payment(){
     const [cardNumber, setCardNumber] = useState('4217830051700170')
     const [expireTo, setExpireTo] = useState('1227')
     const [cvv, setCVV] = useState('363')
-    const [tableNum, setTableNum] = useState('')
+    const [clientNumber, setClientNumber] = useState('')
     const handleCardHolder = (e) => setCardHolder(e.target.value)
     const handleCardNumber = (e) => setCardNumber(e.target.value)
     const handleExpireTo = (e) => setExpireTo(e.target.value)
     const handleCVV = (e) => setCVV(e.target.value)
-    const handleTableNum = (e) => setTableNum(e.target.value)
+    const handleClientNumber = (e) => setClientNumber(e.target.value)
 
 
     const isNoCardHolder = cardHolder === ''
     const isNoCardNumber = cardNumber === ''
     const isNoExpireTo = expireTo === ''
     const isNoCVV = cvv === ''
-    const isNoTableNum = tableNum === ''
+    const isIncorrectClientNumber = Boolean((clientNumber.length < 13) & (clientNumber.length !== 0))
+    const [currentlyPaid, setCurrentlyPaid] = useState(localStorage.getItem('orderID'))
 
     return (
         <ChakraProvider>
@@ -108,9 +107,15 @@ function Payment(){
             </TableContainer>
                 </VStack>
             </Center>
-            <Button colorScheme="blue" onClick={() => {
-                onOpen()
-            }}>Pay with credit card</Button>
+            <Box marginTop={4}>
+                <Button colorScheme="blue" onClick={() => {
+                    onOpen()
+                }}>Pay with credit card</Button>
+                {localStorage.getItem('role') === 'BARISTA' ?
+                <Button marginLeft={4} colorScheme="blue" onClick={() => {
+                    onOpenCash()
+                }}>Pay with cash</Button>:<p/>}
+            </Box>
             <Modal isCentered isOpen={isOpen} onClose={onClose}>
                 <ModalOverlay
                     bg='blackAlpha.300'
@@ -170,52 +175,195 @@ function Payment(){
                                 </div>
                             </SimpleGrid>
                         <Divider orientation='horizontal' />
-                        <FormControl isInvalid={isNoTableNum} value={tableNum} marginTop={5}>
-                            <FormLabel>Please, enter table number:</FormLabel>
-                            <Input type='number' onChange={handleTableNum} value={tableNum} ></Input>
-                            {!isNoTableNum ? (
-                                <FormHelperText>
-                                    Enter table number.
-                                </FormHelperText>
-                            ) : (
-                                <FormErrorMessage> Table number is required.</FormErrorMessage>
-                            )}</FormControl>
-
+                        {localStorage.getItem('role') === "BARISTA" ?
+                                <FormControl isInvalid={isIncorrectClientNumber} marginTop={4}>
+                                    <FormLabel>Client phone number</FormLabel>
+                                    <Input as={InputMask} mask="999 999 99 99" maskChar={null} onChange={handleClientNumber} value={clientNumber} placeholder='Phone number'/>
+                                    {!isIncorrectClientNumber ? (
+                                        <FormHelperText>
+                                            Enter client phone number, if it need
+                                        </FormHelperText>
+                                    ) : (
+                                        <FormErrorMessage> Client phone number is incorrect.</FormErrorMessage>
+                                    )}
+                                </FormControl> : <p/>}
                     </ModalBody>
                     <ModalFooter>
                         <Button onClick={
                             () => {
-                                fetch('http://localhost:8080/tables/booking/' + tableNum + '/' + localStorage.getItem('orderID'), {
-                                    method: 'POST',
-                                    body: ''
-                                }).then(response => response.text())
-                                    .then(function (text){
-                                        if (text === "ok"){
-                                            fetch('http://localhost:8080/orders/paid/' + localStorage.getItem("orderID"), {
-                                                method: 'POST'
-                                            }).then(function (){
-                                                fetch('http://localhost:8080/orders/get-current/'+localStorage.getItem('userID')).then(response => response.text()).then(function (text){
-                                                    localStorage.setItem('orderID',text)
-                                                })
-                                                onClose()
-                                            })
-                                        }
-                                        else {
-                                            toast({
-                                                position: 'bottom-left',
-                                                title: 'Oops. You have mistake.',
-                                                description: text,
-                                                status: 'error',
-                                                colorScheme: 'blue',
-                                                duration: 5000,
-                                                isClosable: true,
-                                            })
+                                let orderingUser = null
+                                if (clientNumber.length === 13){
+                                    fetch('http://localhost:8080/users/findbyphone?phoneNumber=' + clientNumber, {
+                                        headers: {
+                                            Authorization: localStorage.getItem('token')
                                         }
                                     })
+                                        .then(response => response.json())
+                                        .then(function (json){
+                                            orderingUser=json['id']
+                                        }).catch((e) =>
+                                        toast({
+                                            title: 'User with this number not exist.',
+                                            status: 'error',
+                                            duration: 3000,
+                                            position: 'bottom-right',
+                                            isClosable: true
+                                        })
+                                    )
+                                }
+                                if (orderingUser === null) orderingUser = localStorage.getItem('userID')
+
+                                fetch('http://localhost:8080/orders/paid', {
+                                    method: 'POST',
+                                    headers: {
+                                        Authorization: localStorage.getItem("token"),
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        'id': localStorage.getItem('orderID'),
+                                        'baristaID': localStorage.getItem('baristaID'),
+                                        'userID': orderingUser
+                                    })
+                                }).then(function (){
+                                    fetch('http://localhost:8080/orders/get-current/'+localStorage.getItem('userID'), {
+                                        headers: {
+                                            Authorization: localStorage.getItem("token")}
+                                    }).then(response => response.text()).then(function (text){
+                                        localStorage.setItem('orderID',text)
+                                    })
+                                    onClose()
+                                    if (localStorage.getItem("role") !== 'BARISTA') onOpenFinal()
+                                    if (localStorage.getItem("role") === 'BARISTA') toast({
+                                        position: 'bottom-left',
+                                        title: 'Order has been paid',
+                                        description: 'Order ' + currentlyPaid + ' is accepted.',
+                                        status: 'info',
+                                        colorScheme: 'blue',
+                                        duration: 4000,
+                                        isClosable: true,
+                                    })
+                                })
                             }
                         } margin={2} colorScheme='blue'>Pay</Button>
                         <Button onClick={onClose}>Close</Button>
                     </ModalFooter>
+                </ModalContent>
+            </Modal>
+
+            <Modal isCentered isOpen={isOpenCash} onClose={onCloseCash}>
+                <ModalOverlay
+                    bg='blackAlpha.300'
+                    backdropFilter='blur(10px) hue-rotate(90deg)'
+                />
+                <ModalContent>
+                    <ModalHeader>Payment with cash</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <div  style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            height: '200px',
+                        }}>
+                           <Heading size={"4xl"}>{total} ₪</Heading>
+                        </div>
+                            <FormControl isInvalid={isIncorrectClientNumber} marginTop={4}>
+                                <FormLabel>Client phone number</FormLabel>
+                                <Input as={InputMask} mask="999 999 99 99" maskChar={null} onChange={handleClientNumber} value={clientNumber} placeholder='Phone number'/>
+                                {!isIncorrectClientNumber ? (
+                                    <FormHelperText>
+                                        Enter client phone number, if it need
+                                    </FormHelperText>
+                                ):(
+                                    <FormErrorMessage> Client phone number is incorrect.</FormErrorMessage>
+                                )}
+                            </FormControl>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button onClick={
+                            () => {
+                                let orderingUser = null
+                                if (clientNumber !== null){
+                                    fetch('http://localhost:8080/users/findbyphone?phoneNumber=' + clientNumber, {
+                                        headers: {
+                                            Authorization: localStorage.getItem('token')
+                                        }
+                                    })
+                                        .then(response => response.json())
+                                        .then(function (json){
+                                            orderingUser=json['id']
+                                        }).catch((e) =>
+                                            toast({
+                                                title: 'User with this number not exist.',
+                                                status: 'error',
+                                                duration: 3000,
+                                                position: 'bottom-right',
+                                                isClosable: true
+                                            })
+                                    )
+                                }
+                                if (orderingUser === null) orderingUser = localStorage.getItem('userID')
+
+                                fetch('http://localhost:8080/orders/paid', {
+                                    method: 'POST',
+                                    headers: {
+                                        Authorization: localStorage.getItem("token"),
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        'id': localStorage.getItem('orderID'),
+                                        'baristaID': localStorage.getItem('baristaID'),
+                                        'userID': orderingUser
+                                    })
+                                }).then(function (){
+                                    fetch('http://localhost:8080/orders/get-current/'+localStorage.getItem('userID'), {
+                                        headers: {
+                                            Authorization: localStorage.getItem("token")}
+                                    }).then(response => response.text()).then(function (text){
+                                        localStorage.setItem('orderID',text)
+                                    })
+                                    onCloseCash()
+                                    if (localStorage.getItem("role") !== 'BARISTA') onOpenFinal()
+                                    if (localStorage.getItem("role") === 'BARISTA') toast({
+                                        position: 'bottom-left',
+                                        title: 'Order has been paid',
+                                        description: 'Order ' + currentlyPaid + ' is accepted.',
+                                        status: 'info',
+                                        colorScheme: 'blue',
+                                        duration: 4000,
+                                        isClosable: true,
+                                    })
+                                })
+                            }
+                        } margin={2} colorScheme='blue'>Pay</Button>
+                        <Button onClick={onCloseCash}>Close</Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+
+            <Modal isCentered size='3xl' isOpen={isOpenFinal} onClose={onCloseFinal}>
+                <ModalOverlay
+                    bg='blackAlpha.300'
+                    backdropFilter='blur(10px) hue-rotate(90deg)'
+                />
+                <ModalContent height={'60%'}>
+                    <ModalHeader marginTop={"20%"}></ModalHeader>
+                    <ModalCloseButton onClick={() => {onCloseFinal(); localStorage.setItem("token", null); window.location.assign('http://localhost:3000/')}}/>
+                    <ModalBody>
+                        <div  style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            height: '200px',
+                        }}>
+                            <VStack>
+                                <Heading>Your order:</Heading>
+                                <Heading size={"4xl"}>{currentlyPaid}</Heading>
+                                <Heading>Enjoy best coffee ever!</Heading>
+                            </VStack>
+                        </div>
+                    </ModalBody>
+
                 </ModalContent>
             </Modal>
         </ChakraProvider>

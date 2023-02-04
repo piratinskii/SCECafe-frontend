@@ -1,20 +1,13 @@
 import React, {useEffect, useState} from "react";
 import {
     Card,
-    CardHeader,
     CardBody,
-    CardFooter,
     Divider,
     Button,
-    ButtonGroup,
     Heading,
-    Stack,
-    Image,
     Text,
-    SimpleGrid,
     TableContainer,
     Table,
-    TableCaption,
     Thead,
     Tr,
     Th,
@@ -25,26 +18,26 @@ import {
     NumberIncrementStepper,
     NumberDecrementStepper,
     HStack,
-    Icon,
     IconButton,
-    MenuIcon,
     VStack,
-    Badge, Link, Td, Tfoot, Center
+    Badge, Link, Td, Tfoot, Center, Box
 } from '@chakra-ui/react'
 import { ChakraProvider } from '@chakra-ui/react'
-import {DeleteIcon, ExternalLinkIcon} from "@chakra-ui/icons";
 import {AiOutlineDelete} from "react-icons/ai";
-import {Route, Routes} from "react-router-dom";
+import InPrepare from "./Components/inPrepare";
 
 
 function Cart(){
     const handleClick = (id) => {
         fetch('http://localhost:8080/position/full-remove/' + localStorage.getItem('orderID') + '/' + id, {
             method: 'POST',
-            body: ''
+            body: '',
+            headers: {
+                Authorization: localStorage.getItem("token")}
         })
             .then(function (r){
-                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
+                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {headers: {
+                        Authorization: localStorage.getItem("token")}})
                     .then(response => response.json())
                     .then(setList);
             })
@@ -53,10 +46,13 @@ function Cart(){
     const handleChange = (id, value) => {
         fetch('http://localhost:8080/position/change/' + localStorage.getItem('orderID') + '/' + id + '/' + value, {
             method: 'POST',
-            body: ''
+            body: '',
+            headers: {
+                Authorization: localStorage.getItem("token")}
         })
             .then(function (r){
-                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
+                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {headers: {
+                        Authorization: localStorage.getItem("token")}})
                     .then(response => response.json())
                     .then(setList);
             })
@@ -64,14 +60,16 @@ function Cart(){
 
     const [list, setList] = useState([]);
     useEffect(()=>{
-        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'))
+        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'),{headers: {
+                Authorization: localStorage.getItem("token")}})
             .then(response => response.json())
             .then(setList);
     }, []);
 
     const [inProgress, setInProgress] = useState([]);
     useEffect(()=>{
-        fetch('http://localhost:8080/orders/in-progress/' + localStorage.getItem('userID'))
+        fetch('http://localhost:8080/orders/in-progress/' + localStorage.getItem('userID'), {headers: {
+                Authorization: localStorage.getItem("token")}})
             .then(response => response.json())
             .then(setInProgress);
     }, []);
@@ -87,7 +85,7 @@ function Cart(){
 
     return (
         <ChakraProvider>
-            {inProgress.length > 0 ?
+            {inProgress.length > 0 && (localStorage.getItem('role') !== 'GUEST' || localStorage.getItem('role') !== 'BARISTA') ?
                 <Center marginTop={50}>
                     <VStack>
                         <Heading size={"lg"}>Now preparing</Heading>
@@ -158,6 +156,11 @@ function Cart(){
             </div> : <Center><Heading marginTop={12} size={"lg"} minW={500} maxW={500}>That's time to order coffee ;) Let`s see <Link href='http://localhost:3000/' color={"blue"} >
                     menu
                 </Link></Heading></Center>}
+            {localStorage.getItem("role") === 'BARISTA' ?
+                <Box marginLeft={30} marginRight={30}>
+                    <Divider marginTop={30} marginBottom={30}/>
+                    <InPrepare />
+                </Box>: <p></p>}
         </ChakraProvider>
     );
 }

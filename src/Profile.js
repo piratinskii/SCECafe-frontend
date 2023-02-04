@@ -10,17 +10,14 @@ import {
     FormErrorMessage,
     useToast,
     Link,
-    HStack,
     useDisclosure,
     ModalOverlay,
-    ModalContent, ModalHeader, ModalCloseButton, ModalBody, FormHelperText, SimpleGrid, Divider, ModalFooter, Modal
+    ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Modal
 } from '@chakra-ui/react'
 import { ChakraProvider } from '@chakra-ui/react'
 import {Field, Form, Formik} from "formik";
 import * as yup from "yup";
-import {date} from "yup";
-import InputMask from "react-input-mask";
-import md5 from "md5";
+import bcrypt from "bcryptjs";
 
 const validationSchema = yup.object().shape({
     firstname: yup.string().required('Firstname is required!'),
@@ -32,6 +29,7 @@ function Profile(){
     const [oldPassword, setOldPassword] = useState('')
     const [newPassword, setNewPassword] = useState('')
     const [rePassword, setRePassword] = useState('')
+
     const handleOldPasswordChange = (e) => setOldPassword(e.target.value)
     const handleNewPasswordChange = (e) => setNewPassword(e.target.value)
     const handleRePasswordChange = (e) => setRePassword(e.target.value)
@@ -40,32 +38,34 @@ function Profile(){
             if (newPassword !== oldPassword){
                 const checkPassword = new Map();
                 checkPassword.set('id', localStorage.getItem('userID'))
-                checkPassword.set('password', oldPassword);
-                fetch('http://localhost:8080/users/checkpassword?id=' + checkPassword.get('id')+'&password='+md5(checkPassword.get('password')), {
+                fetch('http://localhost:8080/users/checkpassword?id=' + checkPassword.get('id'), {
                     method: 'GET',
-                    headers: {'Content-Type': 'application/json;charset=utf-8'},
+                    headers: {'Content-Type': 'application/json;charset=utf-8',
+                            Authorization: localStorage.getItem("token")},
                 }).then(response => response.text()).then(function (text) {
-                    if (text === 'true'){
-                        profile['password'] = md5(newPassword);
-                        fetch('http://localhost:8080/users/change/password', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json;charset=utf-8'},
-                            body: JSON.stringify(profile)
-                        }).then(function () {
-                            toast({title: 'Password has been changed', status: "success", isClosable: true,})
-                            onClose();
+                   if (bcrypt.compareSync(oldPassword,text)){
+                                profile['password'] = newPassword;
+                                fetch('http://localhost:8080/users/change/password', {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json;charset=utf-8',
+                                        Authorization: localStorage.getItem("token")},
+                                    body: JSON.stringify(profile)
+                                }).then(function () {
+                                    toast({title: 'Password has been changed', status: "success", isClosable: true,})
+                                    onClose();
+                                })
+                            } else {
+                                toast({title: 'Old password is wrong!', status: "error", isClosable: true})
+                            }
                         })
-                    } else {
-                        toast({title: 'Old password is wrong!', status: "error", isClosable: true})
-                    }
-                })
             } else toast({title: 'The new password must be different from the old one!', status: "error", isClosable: true})
         } else toast({title: 'Re-type password does not match new password!', status: "error", isClosable: true})
     }
     const { isOpen, onOpen, onClose } = useDisclosure()
     const [profile, setProfile] = useState([])
     useEffect(()=>{
-    fetch('http://localhost:8080/users/'+localStorage.getItem('userID'))
+    fetch('http://localhost:8080/users/'+localStorage.getItem('userID'), {headers: {
+            Authorization: localStorage.getItem("token")}})
         .then(response => response.json())
         .then(setProfile)},[]);
     const toast = useToast()
@@ -84,7 +84,8 @@ function Profile(){
                             profile['email'] = values.email;
                             fetch('http://localhost:8080/users/change', {
                                 method: 'POST',
-                                headers: {'Content-Type': 'application/json;charset=utf-8'},
+                                headers: {'Content-Type': 'application/json;charset=utf-8',
+                                        Authorization: localStorage.getItem("token")},
                                 body: JSON.stringify(profile)
                             }).then(function () {toast({title: 'Changes saved', status: "success", isClosable: true,})})
                 },1000)}}>
