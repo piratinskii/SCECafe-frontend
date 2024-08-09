@@ -1,15 +1,10 @@
 import React from "react";
-import ByID from "./Components/ByID";
 import Test from "./Components/Test";
 
-function Coffee(){
-
-    const byPriceToMax = (Order) => {
-        Order.forEach()
-    }
+function Coffee() {
 
     return (
-        <Test />
+        <Test/>
     );
 }
 

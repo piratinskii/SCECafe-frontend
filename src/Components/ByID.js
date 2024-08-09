@@ -14,18 +14,21 @@ import {
     Text,
     SimpleGrid, useToast, Center, IconButton, Icon, HStack
 } from '@chakra-ui/react'
-import { ChakraProvider } from '@chakra-ui/react'
-import {BsFillCartPlusFill, } from "react-icons/bs";
-import { AiOutlineMinusCircle, AiOutlinePlusCircle} from "react-icons/ai";
+import {ChakraProvider} from '@chakra-ui/react'
+import {BsFillCartPlusFill,} from "react-icons/bs";
+import {AiOutlineMinusCircle, AiOutlinePlusCircle} from "react-icons/ai";
 import OrderByBar from "./OrderByBar";
 
-function ByID(){
+function ByID() {
     const toast = useToast();
     const [inOrder, setInOrder] = useState([]);
     const [update, setUpdate] = useState(0);
-    useEffect(()=>{
-        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {headers: {
-                Authorization: localStorage.getItem("token")}})
+    useEffect(() => {
+        fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {
+            headers: {
+                Authorization: localStorage.getItem("token")
+            }
+        })
             .then(response => response.json())
             .then(setInOrder);
     }, []);
@@ -34,9 +37,10 @@ function ByID(){
             method: 'POST',
             body: '',
             headers: {
-                Authorization: localStorage.getItem("token")}
+                Authorization: localStorage.getItem("token")
+            }
         })
-            .then(function (r){
+            .then(function (r) {
                 toast({
                     position: 'bottom-left',
                     title: 'Item added.',
@@ -46,8 +50,11 @@ function ByID(){
                     duration: 1000,
                     isClosable: true,
                 })
-                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {headers: {
-                        Authorization: localStorage.getItem("token")}})
+                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {
+                    headers: {
+                        Authorization: localStorage.getItem("token")
+                    }
+                })
                     .then(response => response.json())
                     .then(setInOrder);
             })
@@ -57,9 +64,10 @@ function ByID(){
             method: 'POST',
             body: '',
             headers: {
-                Authorization: localStorage.getItem("token")}
+                Authorization: localStorage.getItem("token")
+            }
         })
-            .then(function (r){
+            .then(function (r) {
                 toast({
                     position: 'bottom-left',
                     title: 'Item removed.',
@@ -69,40 +77,47 @@ function ByID(){
                     duration: 1000,
                     isClosable: true,
                 })
-                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {headers: {
-                        Authorization: localStorage.getItem("token")}})
+                fetch('http://localhost:8080/orders/' + localStorage.getItem('orderID'), {
+                    headers: {
+                        Authorization: localStorage.getItem("token")
+                    }
+                })
                     .then(response => response.json())
                     .then(setInOrder);
             })
     }
 
     const [list, setList] = useState([]);
-    useEffect(()=>{
-        fetch('http://localhost:8080/item', {headers: {
-                Authorization: localStorage.getItem("token")}})
+    useEffect(() => {
+        fetch('http://localhost:8080/item', {
+            headers: {
+                Authorization: localStorage.getItem("token")
+            }
+        })
             .then(response => response.json())
             .then(setList);
     }, []);
 
-    fetch('http://localhost:8080/orders/get-current/'+localStorage.getItem('userID'), {headers: {
-            Authorization: localStorage.getItem("token")}}).then(response => response.text()).then(function (text){
-        localStorage.setItem('orderID',text)
+    fetch('http://localhost:8080/orders/get-current/' + localStorage.getItem('userID'), {
+        headers: {
+            Authorization: localStorage.getItem("token")
+        }
+    }).then(response => response.text()).then(function (text) {
+        localStorage.setItem('orderID', text)
     })
 
     //Onion this arrays
     let Order = [];
-    list.forEach(element =>
-    {
+    list.forEach(element => {
         let OrdPosition = new Object();
         OrdPosition['id'] = element.id
         OrdPosition['title'] = element.title
         OrdPosition['description'] = element.description
         OrdPosition['img'] = element.img
         OrdPosition['cost'] = element.cost
-        inOrder.forEach(inOrd =>
-        {
+        inOrder.forEach(inOrd => {
             if (inOrd.itemID == element.id)
-                OrdPosition['count']=inOrd.count
+                OrdPosition['count'] = inOrd.count
         })
         Order.push(OrdPosition)
     })
@@ -114,9 +129,9 @@ function ByID(){
                 {Order.map(({id, title, description, img, cost, count}, index) =>
                     id != null && title != null && description != null && img != null && cost > 0 ?
                         <Card key={index}>
-                            <CardBody >
+                            <CardBody>
                                 <Image
-                                    src={'http://localhost:8080/item/images/'+id}
+                                    src={'http://localhost:8080/item/images/' + id}
                                     alt={title}
                                     borderRadius='lg'
                                 />
@@ -130,7 +145,7 @@ function ByID(){
                                     </Text>
                                 </Stack>
                             </CardBody>
-                            <Divider />
+                            <Divider/>
                             <CardFooter>
                                 {count > 0 ?
                                     <Center width='100%'>
@@ -139,9 +154,12 @@ function ByID(){
                                             as={AiOutlineMinusCircle}
                                             size='xs'
                                             marginLeft='10px'
-                                            onClick={() => {handleClickRemove(id, title)}}
+                                            onClick={() => {
+                                                handleClickRemove(id, title)
+                                            }}
                                         />
-                                        <Badge ml='1' fontSize='1.1em' w='30px' h='30px' colorScheme='gray' right='0px' borderRadius='10px'>
+                                        <Badge ml='1' fontSize='1.1em' w='30px' h='30px' colorScheme='gray' right='0px'
+                                               borderRadius='10px'>
                                             {count}
                                         </Badge>
                                         <IconButton
@@ -149,16 +167,18 @@ function ByID(){
                                             as={AiOutlinePlusCircle}
                                             size='xs'
                                             marginLeft='10px'
-                                            onClick={() => {handleClick(id, title)}}
+                                            onClick={() => {
+                                                handleClick(id, title)
+                                            }}
                                         />
-                                    </Center>:
+                                    </Center> :
                                     <Button variant='ghost' colorScheme='blue' onClick={() => {
                                         handleClick(id, title)
                                     }}>
                                         <Icon as={BsFillCartPlusFill}/>&nbsp;To cart
                                     </Button>}
                             </CardFooter>
-                        </Card>: <p/> )}
+                        </Card> : <p/>)}
             </SimpleGrid>
         </ChakraProvider>
     );
