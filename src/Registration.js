@@ -195,7 +195,7 @@ function Registration() {
 
                                     <Button
                                         mt={4}
-                                        type='back'
+                                        type='button'
                                         marginRight={12}
                                         onClick={() => {
                                             window.location.assign('http://localhost:3000/welcome');
@@ -207,7 +207,7 @@ function Registration() {
                                         mt={4}
                                         colorScheme='blue'
                                         isLoading={props.isSubmitting}
-                                        type='save'
+                                        type='submit'
                                     >
                                         Create user
                                     </Button>

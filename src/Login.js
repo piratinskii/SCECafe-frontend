@@ -132,7 +132,7 @@ function Login(props) {
                                 <Center>
                                     <Button
                                         mt={4}
-                                        type='back'
+                                        type='button'
                                         marginRight={12}
                                         onClick={() => {
                                             window.location.assign('http://localhost:3000/welcome');
@@ -144,7 +144,7 @@ function Login(props) {
                                         mt={4}
                                         colorScheme='blue'
                                         isLoading={props.isSubmitting}
-                                        type='login'
+                                        type='submit'
                                     >
                                         Login
                                     </Button>
